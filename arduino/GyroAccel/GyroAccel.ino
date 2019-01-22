@@ -132,6 +132,10 @@
 #define FIFO_R_W 0x74 
 #define WHO_AM_I 0x75 
 
+#define READ_FLAG 0x80
+
+#define RESET 0x80
+
 /*
 SPI Specs
 The maximum frequency of SCLK is 1MHz
@@ -155,29 +159,34 @@ D7 D6 D5 D3 D2 D1 D0
 
 
 
-
+#define CLOCK_SPEED 1000000
 
 
 const int chipSelectPin = 45;
 
+
 void setup() {
 
-    Serial.begin(9600);
+    Serial.begin(115200);
+    pinMode(chipSelectPin, OUTPUT);
 
     digitalWrite(chipSelectPin, HIGH);
 
+    
     SPI.begin();
 
     delay(1000);
+
+    initMpu();
     
     // disable i2c
-    writeRegister(USER_CTRL, 0x40);
+    //writeRegister(USER_CTRL, 0x40);
 
     delay(100);
 
-    byte c = readRegister(WHO_AM_I, WHO_AM_I);
+    uint8_t c = readReg(WHO_AM_I, 0x00);
 
-    Serial.print("MPU9250 "); Serial.print("I AM "); Serial.print(c, HEX); Serial.print(" I should be "); Serial.println(0x71, HEX);
+    Serial.print("MPU9250 "); Serial.print("I AM 0x"); Serial.print(c, HEX); Serial.print(" I should be 0x"); Serial.println(0x71, HEX);
 
     if (c == 0x71)
     {
@@ -199,75 +208,76 @@ void loop() {
     // put your main code here, to run repeatedly:
 
 
-
 }
 
 
-uint8_t readByte(byte deviceAddress, byte registerAddress)
+unsigned int writeReg( uint8_t registerAddress, uint8_t data, bool readFlag=false )
 {
-    uint8_t data;
-    Wire.beginTransmission(deviceAddress);
-    Serial.print("beginning transmission to device address: ");
-    Serial.print(deviceAddress, HEX);
-    Serial.print("\n");
-    Wire.write(registerAddress);
-    Serial.print("interfacing with register: ");
-    Serial.print(registerAddress, HEX);
-    Serial.print("\n");
-    Wire.endTransmission(false);
-    Wire.requestFrom(deviceAddress, (uint8_t) 1);
+    unsigned int temp_val = 0;
+    
+    if(readFlag){
+      Serial.println("--- READ ---");
+      Serial.print("Reading from Register: ");
+      // using bitwise AND to remove the read flag to get register value
+      Serial.println(registerAddress & 0x7F, HEX);
+      
+    } else{
+      Serial.println("--- WRITE ---");
+      Serial.print("Writing to Register: ");
+      Serial.println(registerAddress, HEX);
+      Serial.print("Data to write: ");
+      Serial.println(data, BIN);
+      
+    }
+    if(readFlag)
+    {
+      Serial.print("temp_val before call: 0x");
+      Serial.println(temp_val, HEX);
+    }
+    
+    select();
+    SPI.transfer(registerAddress);
+    temp_val=SPI.transfer(data);
+    Serial.print("temp_val after call: 0x");
+    deselect();
 
-    data = Wire.read();
+    if(readFlag){
+      Serial.println("--- END READ ---");
+      Serial.println();
+    } else {
+      Serial.println(temp_val, HEX);
+      Serial.println("--- END WRITE ---");
+      Serial.println();
+    }
 
+    
 
-    Serial.print("Received data: ");
-    Serial.print(data, HEX);
-    Serial.print("\n");
-
-
-    return data;
+    return temp_val;
 }
 
-
-void writeRegister(byte registerAddress, byte data) {
-
-  byte writeBit = 0;
-  byte dataToSend = writeBit | registerAddress;
-
-  Serial.print(registerAddress, HEX);
-  Serial.print("\n");
-  Serial.print(data, BIN);
-  Serial.print("\n");
-  Serial.print(dataToSend, BIN);
-  Serial.print("\n");
-
-  // take the chip select low to select the device:
-  digitalWrite(chipSelectPin, LOW);
-
-  SPI.transfer(registerAddress); //Send register location
-  SPI.transfer(data);  //Send value to record into register
-
-  // take the chip select high to de-select:
-  digitalWrite(chipSelectPin, HIGH);
+unsigned int  readReg( uint8_t registerAddress, uint8_t data )
+{
+    // bitwise OR done to registerAddress to set read bit
+    return writeReg(registerAddress | READ_FLAG, data, true);
 }
 
-//Read from or write to register from the SCP1000:
-unsigned int readRegister(byte thisRegister, int bytesToRead) {
-  byte result = 0;   // result to return
-  Serial.print(thisRegister, HEX);
-  Serial.print("\n");
-  // take the chip select low to select the device:
-  digitalWrite(chipSelectPin, LOW);
-  // send the device the register you want to read:
-  result = SPI.transfer(thisRegister);
-  Serial.print(result, HEX);
-  Serial.print("\n");
-  // if you still have another byte to read:
-  // take the chip select high to de-select:
-  delay(100);
-   Serial.print(result, HEX);
-   Serial.print("\n");
-  digitalWrite(chipSelectPin, HIGH);
-  // return the result:
-  return (result);
+void initMpu(){
+
+  Serial.print("Initializing MPU \n");
+
+  writeReg(PWR_MGMT_1, RESET);
+  writeReg(USER_CTRL, 0x00);
+
+  writeReg(USER_CTRL, 0x30);
+}
+
+void select() {
+    //Set CS low to start transmission
+    SPI.beginTransaction(SPISettings(CLOCK_SPEED, MSBFIRST, SPI_MODE3));
+    digitalWrite(chipSelectPin, LOW);
+}
+void deselect() {
+    //Set CS high to stop transmission
+    digitalWrite(chipSelectPin, HIGH);
+    SPI.endTransaction();
 }
