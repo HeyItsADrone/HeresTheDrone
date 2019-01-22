@@ -178,9 +178,6 @@ void setup() {
     delay(1000);
 
     initMpu();
-    
-    // disable i2c
-    //writeRegister(USER_CTRL, 0x40);
 
     delay(100);
 
@@ -192,13 +189,11 @@ void setup() {
     {
         Serial.print("MPU9250 is ready");
 
-
     }
 
     else
     {
         Serial.print("Incorrect response for MPU9250");
-
 
     }
 
@@ -217,34 +212,30 @@ unsigned int writeReg( uint8_t registerAddress, uint8_t data, bool readFlag=fals
     
     if(readFlag){
       Serial.println("--- READ ---");
-      Serial.print("Reading from Register: ");
+      Serial.print("Reading from Register: 0x");
       // using bitwise AND to remove the read flag to get register value
       Serial.println(registerAddress & 0x7F, HEX);
       
     } else{
       Serial.println("--- WRITE ---");
-      Serial.print("Writing to Register: ");
+      Serial.print("Writing to Register: 0x");
       Serial.println(registerAddress, HEX);
       Serial.print("Data to write: ");
-      Serial.println(data, BIN);
+      Serial.print(data, BIN);
+      Serial.println("b");
       
-    }
-    if(readFlag)
-    {
-      Serial.print("temp_val before call: 0x");
-      Serial.println(temp_val, HEX);
     }
     
     select();
     SPI.transfer(registerAddress);
     temp_val=SPI.transfer(data);
-    Serial.print("temp_val after call: 0x");
     deselect();
 
     if(readFlag){
       Serial.println("--- END READ ---");
       Serial.println();
     } else {
+      Serial.print("temp_val after call: 0x");
       Serial.println(temp_val, HEX);
       Serial.println("--- END WRITE ---");
       Serial.println();
@@ -263,12 +254,12 @@ unsigned int  readReg( uint8_t registerAddress, uint8_t data )
 
 void initMpu(){
 
-  Serial.print("Initializing MPU \n");
+  Serial.println("Initializing MPU \n");
 
   writeReg(PWR_MGMT_1, RESET);
   writeReg(USER_CTRL, 0x00);
-
   writeReg(USER_CTRL, 0x30);
+  
 }
 
 void select() {
