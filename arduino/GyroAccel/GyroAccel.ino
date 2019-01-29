@@ -1,7 +1,6 @@
 
 
 #include <SPI.h>
-#include <Wire.h>
 #include "MPU.h"
 
 const int chipSelectPin = 45;
