@@ -22,6 +22,7 @@ void setup() {
 
     
     mpu.initMpu(chipSelectPin);
+    mpu.testMpu(SelfTest);
 
 }
 

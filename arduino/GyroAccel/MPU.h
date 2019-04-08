@@ -183,14 +183,20 @@ class MPU {
 
 int chipSelectPin;
 
+float SelfTest[6]; 
+
+void gyroSelfTests(float * destination);
+void accelSelfTests(float * destination);
+
 public:
 
 
     MPU() {}
     
     void initMpu(int chipSelectPin);
+    void testMpu();
 
-    uint8_t writeReg(uint8_t registerAddress, uint8_t data, bool readFlag = false);
+    uint8_t writeReg(uint8_t registerAddress, uint8_t data);
 
     uint8_t readReg(uint8_t registerAddress, uint8_t data);
 
@@ -199,6 +205,7 @@ public:
     void deselect();
 
     void setChipSelectPin(int chipSelectPin){this->chipSelectPin = chipSelectPin;}
+    
     int getChipSelectPin(){return chipSelectPin;}
 
 };
